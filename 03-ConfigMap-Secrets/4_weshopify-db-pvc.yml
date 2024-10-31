@@ -3,7 +3,6 @@ kind: PersistentVolumeClaim
 metadata:
   name: weshopify-db-pvc
 spec:
-  volumeName: weshopify-db-pv      
   accessModes:
     - ReadWriteOnce
   storageClassName: local-storage
