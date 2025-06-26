@@ -18,7 +18,7 @@ spec:
       - name: javawebappcontainer
         image: ekangaki/weather-app:latest
         ports: 
-          - containerPort: 8080
+          - containerPort: 5000
 ---
 apiVersion: v1
 kind: Service
@@ -30,6 +30,6 @@ spec:
     app: nguti-app
   ports:
     - port: 80
-      targetPort: 8080
+      targetPort: 5000
       nodePort: 30785
 ...
