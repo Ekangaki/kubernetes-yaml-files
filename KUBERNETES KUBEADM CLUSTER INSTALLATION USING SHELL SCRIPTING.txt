@@ -1,0 +1,166 @@
+##############################################################
+######################################################################
+AUTOMATE KUBERNETES KUBEADM CLUSTER INSTALLATION USING SHELL SCRIPTING
+######################################################################
+######################################################################
+EXECUTE ON CONTROL PLANE:
+#########################
+$ vi k8s_control_plane_setup.sh
+
+#!/bin/bash
+set -e  # Exit immediately if a command exits with a non-zero status
+
+echo "███ Starting Kubernetes Control Plane Setup ███"
+
+# STEP 1: Disable SWAP
+echo "--- Disabling SWAP ---"
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# STEP 2: Install Docker
+echo "--- Installing Docker ---"
+if ! command -v docker &> /dev/null; then
+  curl -fsSL https://get.docker.com -o install-docker.sh
+  sudo sh install-docker.sh
+else
+  echo "Docker is already installed."
+fi
+
+# STEP 3: Install cri-dockerd on Ubuntu 22.04
+echo "--- Installing cri-dockerd ---"
+sudo apt-get update -y
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+# Download the public signing key
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+# Add Kubernetes APT repository
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# Download and install cri-dockerd
+wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.15/cri-dockerd_0.3.15.3-0.ubuntu-jammy_amd64.deb -O /tmp/cri-dockerd.deb
+sudo dpkg -i /tmp/cri-dockerd.deb
+
+# STEP 4: Install Kubernetes Components
+echo "--- Installing kubeadm, kubelet, kubectl ---"
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# STEP 5: Initialize the Kubernetes Control Plane
+echo "--- Initializing Kubernetes Control Plane ---"
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --cri-socket unix:///var/run/cri-dockerd.sock
+
+# STEP 6: Configure kubectl for the current user
+echo "--- Configuring kubectl access ---"
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# STEP 7: Generate Join Command for Worker Nodes
+echo "--- Generating kubeadm join command ---"
+sudo kubeadm token create --print-join-command
+
+# STEP 8: Install CNI Plugin (Weave Net)
+echo "--- Installing CNI Plugin (Weave Net) ---"
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+
+echo "███ Kubernetes Control Plane Setup COMPLETE ███"
+
+##############################################
+Usage:
+Save this script to a file named k8s_control_plane_setup.sh.
+
+1. Make it executable:
+$ chmod +x k8s_control_plane_setup.sh
+
+2. Run it on your Master/Control Plane node:
+$ ./k8s_control_plane_setup.sh
+#########################################
+EXECUTE ON WORKER NODES:
+#########################
+$ vi k8s_worker_node_setup.sh
+
+#!/bin/bash
+set -e  # Exit if any command fails
+
+echo "███ Starting Kubernetes Worker Node Setup ███"
+
+# STEP 1: Disable SWAP
+echo "--- Disabling SWAP ---"
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# STEP 2: Install Docker
+echo "--- Installing Docker ---"
+if ! command -v docker &> /dev/null; then
+  curl -fsSL https://get.docker.com -o install-docker.sh
+  sudo sh install-docker.sh
+else
+  echo "Docker is already installed."
+fi
+
+# STEP 3: Install cri-dockerd on Ubuntu 22.04
+echo "--- Installing cri-dockerd ---"
+sudo apt-get update -y
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+# Prepare directory for APT keyring
+sudo mkdir -p /etc/apt/keyrings
+
+# Download Kubernetes GPG key
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+# Add Kubernetes repository
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# Download and install cri-dockerd
+wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.15/cri-dockerd_0.3.15.3-0.ubuntu-jammy_amd64.deb -O /tmp/cri-dockerd.deb
+sudo dpkg -i /tmp/cri-dockerd.deb
+
+# STEP 4: Install kubeadm, kubelet, and kubectl
+echo "--- Installing Kubernetes components ---"
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+echo "███ Worker Node setup complete. You may now join the cluster using the join command from the Control Plane. ███"
+
+
+#############################
+
+Usage:
+Save this script to a file named k8s_worker_node_setup.sh
+
+1. Make it executable:
+$ chmod +x k8s_worker_node_setup.sh
+
+2. Run it on your Master/Control Plane node:
+$ ./k8s_worker_node_setup.sh
+
+🚀 Next Step (Manual):
+Copy the kubeadm join command generated from step 7 of the your Control Plane:
+
+sudo kubeadm join <master-ip>:6443 --token <token> \
+--discovery-token-ca-cert-hash sha256:<hash> \
+--cri-socket unix:///var/run/cri-dockerd.sock
+#############################
+
+Run on Slave Nodes only
+STEP 10: Run The below command on the master Node to get a link that we will use to connect the Master Node with the Slaves.
+
+# Copy the joined link and add --cri-socket unix:///var/run/cri-dockerd.sock like below
+# Paste on the slave node to join the cluster
+
+kubeadm join 172.31.86.48:6443 --token crioft.eh4ri8tvqrrefqxk --cri-socket unix:///var/run/cri-dockerd.sock --discovery-token-ca-cert-hash sha256:83e5c7436d10e4e92977f1759edcbd45af515c3c50871a050060b37571b96a75
+
+########################
+TEST IF THE NODES ARE UP
+########################
+
+$ kubectl get nodes
+
+
+# You notice the nodes are not ready
+
