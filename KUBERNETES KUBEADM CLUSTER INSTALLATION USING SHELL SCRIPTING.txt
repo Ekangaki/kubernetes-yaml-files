@@ -7,6 +7,8 @@ EXECUTE ON CONTROL PLANE: t2.medium
 #########################
 # Name your Server
 $ hostnamectl set-hostname MASTER-NODE
+# Run bash to active the name
+$ bash
 $ vi k8s_control_plane_setup.sh
 
 #!/bin/bash
