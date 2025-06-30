@@ -87,6 +87,10 @@ EXECUTE ON WORKER NODES: t2.micro
 #########################
 # Name your Server
 $ hostnamectl set-hostname MASTER-NODE
+$ hostnamectl set-hostname MASTER-NODE
+# Run bash to active the name
+$ bash
+
 $ vi k8s_worker_node_setup.sh
 
 #!/bin/bash
