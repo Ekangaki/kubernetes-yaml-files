@@ -3,7 +3,7 @@
 AUTOMATE KUBERNETES KUBEADM CLUSTER INSTALLATION USING SHELL SCRIPTING
 ######################################################################
 ######################################################################
-EXECUTE ON CONTROL PLANE:
+EXECUTE ON CONTROL PLANE: t2.medium
 #########################
 $ vi k8s_control_plane_setup.sh
 
@@ -77,8 +77,9 @@ $ chmod +x k8s_control_plane_setup.sh
 
 2. Run it on your Master/Control Plane node:
 $ ./k8s_control_plane_setup.sh
+###################################################################################################################
 #########################################
-EXECUTE ON WORKER NODES:
+EXECUTE ON WORKER NODES: t2.micro
 #########################
 $ vi k8s_worker_node_setup.sh
 
